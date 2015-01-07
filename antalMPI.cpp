@@ -16,7 +16,7 @@ using namespace std;
 
 //Initial Definiton of the problem
 
-#define MAX_CITIES 1000
+#define MAX_CITIES 200
 #define MAX_DIST 500
 #define MAX_TOUR (MAX_CITIES * MAX_DIST)
 #define MAX_ANTS 30
@@ -304,7 +304,6 @@ void emitDataFile(int bestIndex) {
 }
 
 int main(int argc, char** argv) {
-    int curTime = 0;
 
     cout << "S-ACO:";
     cout << "MaxTime=" << MAX_TIME << endl;
@@ -328,21 +327,23 @@ int main(int argc, char** argv) {
 
     init();
 
-    while (curTime++ < MAX_TIME) {
+    int curTime = myid;
+    while (curTime < MAX_TIME) {
+        curTime+=numprocs;
         if (simulateAnts() == 0) {
             updateTrails();
 
             if (curTime != MAX_TIME)
                 restartAnts();
 
-            cout << "\n Time is " << curTime << " (" << best << " km)";
+            cout << "\nProcess " << myid << " time is " << curTime << " (" << best << " km)";
         }
     }
 
 
     if (myid == 0) {
         endwtime = MPI_Wtime();
-        printf("Wall clock time = %.8f seconds.\n", (endwtime-startwtime) );
+        printf("\nWall clock time = %.8f seconds.\n", (endwtime-startwtime) );
         fflush(stdout);
 
         cout << "\nSACO: Best tour = " << best << " km" << endl << endl << endl;
