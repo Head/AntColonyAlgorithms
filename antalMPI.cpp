@@ -7,8 +7,8 @@
 #include <stdio.h>
 #include <fstream>
 #include <limits>
-#include <chrono>
 #include <iomanip>
+#include <mpi.h>
 
 using namespace std;
 
@@ -303,7 +303,7 @@ void emitDataFile(int bestIndex) {
 
 }
 
-int main() {
+int main(int argc, char** argv) {
     int curTime = 0;
 
     cout << "S-ACO:";
@@ -311,20 +311,22 @@ int main() {
 
     srand(time(NULL));
 
-    std::chrono::system_clock::time_point startTime = std::chrono::system_clock::now();
+    int    myid, numprocs, namelen;
+    char   processor_name[MPI_MAX_PROCESSOR_NAME];
+    double startwtime = 0.0, endwtime;
+
+    MPI_Init(&argc,&argv);
+    MPI_Comm_size(MPI_COMM_WORLD,&numprocs);
+    MPI_Comm_rank(MPI_COMM_WORLD,&myid);
+    MPI_Get_processor_name(processor_name,&namelen);
+
+    fprintf(stdout,"Process %d of %d is on %s\n", myid, numprocs, processor_name);
+    fflush(stdout);
+
+    if (myid == 0)
+        startwtime = MPI_Wtime();
 
     init();
-
-    std::chrono::system_clock::time_point endTime = std::chrono::system_clock::now();
-    std::chrono::microseconds microRunTime
-            = std::chrono::duration_cast<std::chrono::microseconds>(endTime - startTime);
-    double runTime = microRunTime.count() / 1000000.0;
-
-    std::cout << std::setprecision( 8 )
-            << "Init clock time = " << runTime << " seconds."
-            << std::endl << std::flush;
-
-    startTime = std::chrono::system_clock::now();
 
     while (curTime++ < MAX_TIME) {
         if (simulateAnts() == 0) {
@@ -337,22 +339,23 @@ int main() {
         }
     }
 
-    endTime = std::chrono::system_clock::now();
-    microRunTime = std::chrono::duration_cast<std::chrono::microseconds>(endTime - startTime);
-    runTime = microRunTime.count() / 1000000.0;
 
-    std::cout << std::setprecision( 8 ) << endl
-            << "Wall clock time = " << runTime << " seconds."
-            << std::endl << std::flush;
+    if (myid == 0) {
+        endwtime = MPI_Wtime();
+        printf("Wall clock time = %.8f seconds.\n", (endwtime-startwtime) );
+        fflush(stdout);
 
-    cout << "\nSACO: Best tour = " << best << " km" << endl << endl << endl;
-    antType antBest;
-    antBest = ants[bestIndex];
-    for (int i = 0; i < MAX_CITIES; i++) {
-        cout << cities[antBest.path[i]].name << " > ";
+        cout << "\nSACO: Best tour = " << best << " km" << endl << endl << endl;
+        antType antBest;
+        antBest = ants[bestIndex];
+        for (int i = 0; i < MAX_CITIES; i++) {
+            cout << cities[antBest.path[i]].name << " > ";
+        }
+
+        emitDataFile(bestIndex);
     }
 
-    emitDataFile(bestIndex);
+    MPI_Finalize();
 
     return 0;
 }

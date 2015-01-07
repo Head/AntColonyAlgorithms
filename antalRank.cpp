@@ -9,16 +9,19 @@
 //#include <cv.h>
 //#include <highgui.h>
 
+#define pi 3.14159265358979323846
+
 #define MAX_CITIES 30
-#define MAX_DIST 100
+#define MAX_DIST 500
 #define MAX_TOUR (MAX_CITIES * MAX_DIST)
 #define MAX_ANTS 30
 
 using namespace std;
 
 //Initial Definiton of the problem
-struct cityType{
-	int x,y;
+struct cityType {
+	double lat, lon;
+	char   name[100];
 };
 
 struct antType{
@@ -54,6 +57,40 @@ double phero[MAX_CITIES][MAX_CITIES];
 double best=(double)MAX_TOUR;
 int bestIndex;
 
+/*:::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::*/
+/*::  This function converts decimal degrees to radians             :*/
+/*:::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::*/
+double deg2rad(double deg) {
+	return (deg * pi / 180);
+}
+
+/*:::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::*/
+/*::  This function converts radians to decimal degrees             :*/
+/*:::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::*/
+double rad2deg(double rad) {
+	return (rad * 180 / pi);
+}
+
+double distance(double lat1, double lon1, double lat2, double lon2, char unit) {
+	double theta, dist;
+	theta = lon1 - lon2;
+	dist = sin(deg2rad(lat1)) * sin(deg2rad(lat2)) + cos(deg2rad(lat1)) * cos(deg2rad(lat2)) * cos(deg2rad(theta));
+	dist = acos(dist);
+	dist = rad2deg(dist);
+	dist = dist * 60 * 1.1515;
+	switch(unit) {
+		case 'M':
+			break;
+		case 'K':
+			dist = dist * 1.609344;
+			break;
+		case 'N':
+			dist = dist * 0.8684;
+			break;
+	}
+	return (dist);
+}
+
 //function init() - initializes the entire graph
 
 void init()
@@ -63,46 +100,32 @@ void init()
     ifstream f1;
     
     f1.open("TSP.txt");
-	
-	//reading TSP
-	
-	for(from = 0; from < MAX_CITIES; from++)
-	{
-		//randomly place cities
-		
-		f1>>cities[from].x;
-        f1>>cities[from].y;
 
-        cout<<cities[from].x<<" "<<cities[from].y<<endl;
-		
-		//cities[from].y = rand()%MAX_DIST;
-		//printf("\n %d %d",cities[from].x, cities[from].y);
-		for(to=0;to<MAX_CITIES;to++)
-		{
+	for (from = 0; from < MAX_CITIES; from++) {
+		f1 >> cities[from].lon;
+		f1 >> cities[from].lat;
+		f1 >> cities[from].name;
+
+		cout << cities[from].lon << " " << cities[from].lat << " " << cities[from].name << endl;
+		for (to = 0; to < MAX_CITIES; to++) {
 			dist[from][to] = 0.0;
 			phero[from][to] = INIT_PHER;
 		}
 	}
-	
+
 	//computing distance
-	
-	for(from = 0; from < MAX_CITIES; from++)
-	{
-		for( to =0; to < MAX_CITIES; to++)
-		{
-			if(to!=from && dist[from][to]==0.0)
-			{
-				int xd = pow( abs(cities[from].x - cities[to].x), 2);
-				int yd = pow( abs(cities[from].y - cities[to].y), 2);
-				
-				dist[from][to] = sqrt(xd + yd);
-				dist[to][from] = dist[from][to];
-				
+
+	for (from = 0; from < MAX_CITIES; from++) {
+		for (to = 0; to < MAX_CITIES; to++) {
+			if (to != from && dist[from][to] == 0.0) {
+				double distCalc = distance(cities[from].lat, cities[from].lon, cities[to].lat, cities[to].lon, 'K');
+				dist[from][to] = distCalc;
+				dist[to][from] = distCalc;
 			}
 		}
 	}
-	
-	
+
+
 	//initializing the ANTs
 	
 	to = 0;
@@ -342,28 +365,25 @@ void updateTrails()
 	
 }
 
-void emitDataFile(int bestIndex)
-{
+void emitDataFile(int bestIndex) {
 	ofstream f1;
-	f1.open("Data_rank.txt");
+	f1.open("Data.txt");
 	antType antBest;
 	antBest = ants[bestIndex];
 	//f1<<antBest.curCity<<" "<<antBest.tourLength<<"\n";
 	int i;
-	for(i=0;i<MAX_CITIES;i++)
-	{
-		f1<<antBest.path[i]<<" ";
+	for (i = 0; i < MAX_CITIES; i++) {
+		f1 << antBest.path[i] << " ";
 	}
-	
+
 	f1.close();
-	
-	f1.open("city_data_rank.txt");
-	for(i=0;i<MAX_CITIES;i++)
-	{
-		f1<<cities[i].x<<" "<<cities[i].y<<"\n";
+
+	f1.open("city_data.txt");
+	for (i = 0; i < MAX_CITIES; i++) {
+		f1 << cities[i].lon << " " << cities[i].lat << " " << cities[i].name << "\n";
 	}
 	f1.close();
-	
+
 }
 	
 
@@ -387,14 +407,17 @@ int main()
 			
 			if(curTime != MAX_TIME)
 				restartAnts();
-				
-			cout<<"\nTime is "<<curTime<<"("<<best<<")";
-			
+
+			cout << "\n Time is " << curTime << " (" << best << " km)";
 		}
 	}
-	
-	cout<<"\nRank: Best tour = "<<best<<endl<<endl<<endl;
-	
+
+	cout << "\nSACO: Best tour = " << best << " km" << endl << endl << endl;
+	antType antBest;
+	antBest = ants[bestIndex];
+	for (int i = 0; i < MAX_CITIES; i++) {
+		cout << cities[antBest.path[i]].name << " > ";
+	}
 	emitDataFile(bestIndex);
 	
 	return 0;
