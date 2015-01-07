@@ -333,6 +333,9 @@ int main(int argc, char** argv) {
         if (simulateAnts() == 0) {
             updateTrails();
 
+            MPI_Bcast( &phero, MAX_CITIES*MAX_CITIES, MPI_DOUBLE, 0, MPI_COMM_WORLD);
+            MPI_Bcast( &best, 1, MPI_DOUBLE, 0, MPI_COMM_WORLD);
+
             if (curTime != MAX_TIME)
                 restartAnts();
 
