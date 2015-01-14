@@ -20,14 +20,14 @@ int main()
     ofstream f1;
     f1.open("TSP.txt");
     srand(time(NULL));
-    
-    
+
+
     int city;
     
     for(city =0 ;city<MAX_CITIES; city++)
     {
         cities[city].x = rand()%MAX_DIST;
-		
+
     	cities[city].y = rand()%MAX_DIST;
     
         f1<<cities[city].x<<" "<<cities[city].y<<" "<<std::endl;

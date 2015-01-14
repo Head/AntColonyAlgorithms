@@ -7,8 +7,37 @@
 #include <stdlib.h>
 #include <chrono>
 #include <iomanip>
+#include <omp.h>
 
 using namespace std;
+
+int simulateSharedAnts() {
+    int k;
+    int moving = 0;
+
+    #pragma omp parallel for \
+            reduction(+: moving)
+    for (k = 0; k < MAX_ANTS; k++) {
+        //checking if there are any more cities to visit
+        if (ants[k].pathIndex < MAX_CITIES) {
+            ants[k].nextCity = selectNextCity(k);
+            ants[k].tabu[ants[k].nextCity] = 1;
+            ants[k].path[ants[k].pathIndex++] = ants[k].nextCity;
+
+            ants[k].tourLength += dist[ants[k].curCity][ants[k].nextCity];
+
+            //handle last case->last city to first
+            if (ants[k].pathIndex == MAX_CITIES) {
+                ants[k].tourLength += dist[ants[k].path[MAX_CITIES - 1]][ants[k].path[0]];
+            }
+
+            ants[k].curCity = ants[k].nextCity;
+            moving++;
+        }
+    }
+
+    return moving;
+}
 
 int main() {
     int curTime = 0;
@@ -33,8 +62,10 @@ int main() {
 
     startTime = std::chrono::system_clock::now();
 
+    omp_set_num_threads( 8 );
+
     while (curTime++ < MAX_TIME) {
-        if (simulateAnts() == 0) {
+        if (simulateSharedAnts() == 0) {
             updateTrails();
 
             if (curTime != MAX_TIME)
